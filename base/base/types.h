@@ -19,7 +19,7 @@ using UInt8 = char8_t;
 using UInt8 = uint8_t;
 #endif
 
-using UInt16 = uint16_t;
+typedef uint16_t UInt16;
 using UInt32 = uint32_t;
 using UInt64 = uint64_t;
 

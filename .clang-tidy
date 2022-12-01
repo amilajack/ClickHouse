@@ -103,9 +103,7 @@ Checks: '*,
 
     -openmp-*,
 
-    -misc-no-recursion,
-    -misc-non-private-member-variables-in-classes,
-    -misc-const-correctness,
+    -misc-*, # to slow
 
     -modernize-avoid-c-arrays,
     -modernize-concat-nested-namespaces,
