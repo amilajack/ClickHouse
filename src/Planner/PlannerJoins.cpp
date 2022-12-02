@@ -673,7 +673,7 @@ std::shared_ptr<IJoin> chooseJoinAlgorithm(std::shared_ptr<TableJoin> & table_jo
 
     /// JOIN with JOIN engine.
     if (auto storage = table_join->getStorageJoin())
-        return storage->getJoinLocked(table_join, planner_context->getQueryContext());
+        return storage->getJoinLocked(table_join, planner_context->getQueryContext(), right_table_expression_header);
 
     /** JOIN with constant.
       * Example: SELECT * FROM test_table AS t1 INNER JOIN test_table AS t2 ON 1;

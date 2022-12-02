@@ -1,0 +1,27 @@
+SET allow_experimental_analyzer = 1;
+
+DROP TABLE IF EXISTS t;
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS tj;
+
+CREATE TABLE t (a UInt64, b UInt64) ENGINE = Memory;
+CREATE TABLE t1 (a1 UInt64, b1 UInt64) ENGINE = Memory;
+
+CREATE TABLE tj (b UInt64, a UInt64) ENGINE = Join(ALL, LEFT, a);
+
+INSERT INTO t VALUES (1, 100), (2, 200), (3, 300), (4, 400), (5, 500);
+INSERT INTO t1 VALUES (1, 100), (2, 200), (3, 300), (4, 400), (5, 500);
+INSERT INTO tj VALUES (2, 20), (3, 30), (4, 40), (5, 50), (6, 60);
+
+SELECT * FROM t ALL LEFT JOIN tj USING a FORMAT TSVWithNames;
+SELECT * FROM t ALL LEFT JOIN tj ON t.a = tj.a FORMAT TSVWithNames;
+SELECT tj.b, tj.a, t.b, t.a FROM t ALL LEFT JOIN tj ON t.a = tj.a FORMAT TSVWithNames;
+SELECT t.b, tj.b FROM t ALL LEFT JOIN tj ON t.a = tj.a FORMAT TSVWithNames;
+
+SELECT * FROM t1 ALL LEFT JOIN tj ON t1.a1 = tj.a FORMAT TSVWithNames;
+SELECT t1.b1, tj.b FROM t1 ALL LEFT JOIN tj ON t1.a1 = tj.a FORMAT TSVWithNames;
+SELECT b1, b FROM t1 ALL LEFT JOIN tj ON t1.a1 = tj.a FORMAT TSVWithNames;
+
+DROP TABLE IF EXISTS t;
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS tj;

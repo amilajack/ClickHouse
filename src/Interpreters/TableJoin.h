@@ -351,6 +351,11 @@ public:
     bool isSpecialStorage() const { return !right_storage_name.empty() || right_storage_join || right_kv_storage; }
 
     std::shared_ptr<const IKeyValueEntity> getStorageKeyValue() { return right_kv_storage; }
+
+    void setRename(const String & original_name, const String & new_name)
+    {
+        renames[original_name] = new_name;
+    }
 };
 
 }

@@ -161,27 +161,51 @@ void StorageJoin::mutate(const MutationCommands & commands, ContextPtr context)
     }
 }
 
-HashJoinPtr StorageJoin::getJoinLocked(std::shared_ptr<TableJoin> analyzed_join, ContextPtr context) const
+HashJoinPtr StorageJoin::getJoinLocked(std::shared_ptr<TableJoin> analyzed_join, ContextPtr context, const Block & right_sample_block) const
 {
     auto metadata_snapshot = getInMemoryMetadataPtr();
     if (!analyzed_join->sameStrictnessAndKind(strictness, kind))
-        throw Exception("Table " + getStorageID().getNameForLogs() + " has incompatible type of JOIN.", ErrorCodes::INCOMPATIBLE_TYPE_OF_JOIN);
+    {
+        throw Exception(ErrorCodes::INCOMPATIBLE_TYPE_OF_JOIN,
+            "Table {} has incompatible type of JOIN (expected: '{} {}', got: '{} {}')",
+            getStorageID().getNameForLogs(),
+            toString(strictness), toString(kind), toString(analyzed_join->strictness()), toString(analyzed_join->kind()));
+    }
 
     if ((analyzed_join->forceNullableRight() && !use_nulls) ||
         (!analyzed_join->forceNullableRight() && isLeftOrFull(analyzed_join->kind()) && use_nulls))
+    {
         throw Exception(
             ErrorCodes::INCOMPATIBLE_TYPE_OF_JOIN,
             "Table {} needs the same join_use_nulls setting as present in LEFT or FULL JOIN",
             getStorageID().getNameForLogs());
+    }
 
-    /// TODO: check key columns
+    const auto & unqualified_right_sample_block = getRightSampleBlock();
+    if (right_sample_block)
+    {
+        if (unqualified_right_sample_block.columns() != right_sample_block.columns())
+        {
+            throw Exception(
+                ErrorCodes::LOGICAL_ERROR,
+                "Number of columns ({}) in Join storage doesn't match number of columns in right table ({})",
+                unqualified_right_sample_block.dumpNames(), right_sample_block.dumpNames());
+        }
 
-    /// Set names qualifiers: table.column -> column
-    /// It's required because storage join stores non-qualified names
-    /// Qualifies will be added by join implementation (HashJoin)
+        for (size_t i = 0; i < right_sample_block.columns(); ++i)
+        {
+            const auto & unqualified_name = unqualified_right_sample_block.getByPosition(i).name;
+            const auto & qualified_name = right_sample_block.getByPosition(i).name;
+            analyzed_join->setRename(unqualified_name, qualified_name);
+        }
+    }
+
+    /// Set qualified identifiers to original names (table.column -> column).
+    /// It's required because storage join stores non-qualified names.
+    /// Qualifies will be added by join implementation (`setRename` called above).
     analyzed_join->setRightKeys(key_names);
 
-    HashJoinPtr join_clone = std::make_shared<HashJoin>(analyzed_join, getRightSampleBlock());
+    HashJoinPtr join_clone = std::make_shared<HashJoin>(analyzed_join, unqualified_right_sample_block);
 
     RWLockImpl::LockHolder holder = tryLockTimedWithContext(rwlock, RWLockImpl::Read, context);
     join_clone->setLock(holder);
